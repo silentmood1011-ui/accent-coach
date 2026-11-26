@@ -90,31 +90,35 @@
 </nav>
 
 <main>
-  <!-- ============ AZURE SETTINGS ============ -->
+  <!-- ============ SCORING ENGINE ============ -->
   <div class="card" id="az-card">
     <div class="topbar">
-      <h2>⚙️ محرك التقييم الدقيق (Azure)</h2>
-      <span class="pill" id="az-status">مش متوصل</span>
+      <h2>⚙️ محرك التقييم الدقيق (مجاني)</h2>
+      <span class="pill" id="az-status">بيتحقق...</span>
     </div>
     <p class="note" id="az-note">
-      من غير مفتاح Azure التطبيق شغال بمحرك المتصفح المجاني (يكشف الأخطاء الواضحة بس).
-      بمفتاح Azure Speech المجاني بيشتغل التقييم الدقيق: درجة لكل كلمة ولكل صوت (phoneme) على اللكنة الأمريكية.
-      المفتاح بيتخزن على موبايلك بس ومبيتبعتش لأي حد غير مايكروسوفت.
+      المحرك المجاني شغال من غير أي إعداد: بيدرّج كل صوت (phoneme) على اللكنة الأمريكية — صح / بلكنة / غلط — وبيظلل الصوت الغلط.
+      لو السيرفر نايم من قلة الاستخدام، أول تسجيل ممكن ياخد حوالي دقيقة يصحّيه، وبعدها بيرد فوراً.
     </p>
-    <div id="az-form">
+    <details>
+      <summary style="color:var(--dim); font-size:13px; cursor:pointer">إعدادات متقدمة (اختياري)</summary>
       <div class="field">
-        <label>مفتاح Azure Speech (Key)</label>
+        <label>عنوان سيرفر التقييم المجاني</label>
+        <input type="text" id="hf-url" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>مفتاح Azure Speech (اختياري — لو عندك)</label>
         <input type="password" id="az-key" placeholder="Paste your Speech resource key" autocomplete="off">
       </div>
       <div class="field">
-        <label>المنطقة (Region) — زي ما مكتوبة في البوابة</label>
+        <label>منطقة Azure (Region)</label>
         <input type="text" id="az-region" placeholder="eastus" autocomplete="off">
       </div>
       <div class="row" style="justify-content:flex-start">
-        <button class="btn primary small" onclick="saveAzure()">💾 حفظ وتفعيل</button>
-        <button class="btn small" onclick="clearAzure()">🗑 مسح المفتاح</button>
+        <button class="btn primary small" onclick="saveAzure()">💾 حفظ</button>
+        <button class="btn small" onclick="clearAzure()">🗑 مسح مفتاح Azure</button>
       </div>
-    </div>
+    </details>
   </div>
 
   <!-- ============ WORD DRILLS ============ -->
@@ -197,15 +201,14 @@
   <div class="card">
     <h2>ℹ️ بيشتغل إزاي؟</h2>
     <p class="note">
-      لما توصّل مفتاح Azure Speech المجاني، التقييم بيبقى على مستوى كل صوت (phoneme):
-      التطبيق بيحسب درجة النطق (Accuracy) لكل كلمة ولكل صوت جواها على اللكنة الأمريكية،
-      وبيحدد لك الصوت الغلط بالظبط ويسمعك الصح. من غير المفتاح بيشتغل بمحرك المتصفح
-      المجاني اللي بيقارن نصياً ويكشف الأخطاء الواضحة. Azure بيدّي 5 ساعات صوت مجاناً كل شهر.
+      المحرك المجاني (مفتوح المصدر) بيحسب درجة النطق لكل كلمة ولكل صوت (phoneme) على اللكنة الأمريكية،
+      وبيحدد الصوت الغلط بالظبط ويسمعك الصح — من غير أي مفاتيح أو حسابات مدفوعة.
+      لو عندك مفتاح Azure Speech تقدر تحطه من الإعدادات المتقدمة وهيتفضّل تلقائياً.
     </p>
   </div>
 </main>
 
-<footer>مدرب اللكنة الأمريكية — نسخة تجريبية v2</footer>
+<footer>مدرب اللكنة الأمريكية — v3 (محرك مجاني)</footer>
 
 <script>
 "use strict";
@@ -313,19 +316,25 @@ function azKey(){ return (localStorage.getItem("az_key")||"").trim(); }
 function azRegion(){ return (localStorage.getItem("az_region")||"eastus").trim(); }
 function hasAzure(){ return azKey().length > 10; }
 
+const HF_DEFAULT="https://silentmood1011--accent-coach-scorer-web.us-east.modal.run";
+function hfUrl(){ return (localStorage.getItem("hf_url")||HF_DEFAULT).replace(/\/+$/,""); }
 function refreshAzStatus(){
   const st=document.getElementById("az-status");
-  if(hasAzure()){ st.textContent="متوصل ✅ — تقييم دقيق"; st.classList.add("az"); }
-  else { st.textContent="مش متوصل — محرك المتصفح"; st.classList.remove("az"); }
+  if(hasAzure()){ st.textContent="Azure ✅ — تقييم دقيق"; st.classList.add("az"); return; }
+  st.textContent="محرك مجاني — بيتحقق..."; st.classList.remove("az");
+  fetch(hfUrl()+"/health", {cache:"no-store"}).then(r=>r.json()).then(()=>{
+    st.textContent="محرك مجاني ✅ — تقييم دقيق"; st.classList.add("az");
+  }).catch(()=>{ st.textContent="السيرفر نايم — أول تسجيل هيصحّيه"; });
 }
 function saveAzure(){
+  const h=document.getElementById("hf-url").value.trim();
+  if(h) localStorage.setItem("hf_url",h); else localStorage.removeItem("hf_url");
   const k=document.getElementById("az-key").value.trim();
   const r=document.getElementById("az-region").value.trim();
-  if(k.length<10){ alert("المفتاح قصير أوي — اتأكد إنك نسخته كامل من البوابة."); return; }
-  localStorage.setItem("az_key",k);
-  localStorage.setItem("az_region",r||"eastus");
+  if(k){ if(k.length<10){ alert("مفتاح Azure قصير أوي — اتأكد إنك نسخته كامل."); return; }
+    localStorage.setItem("az_key",k); localStorage.setItem("az_region",r||"eastus"); }
   refreshAzStatus();
-  alert("اتحفظ ✅ التقييم الدقيق شغال دلوقتي. جرّب أي تدريب.");
+  alert("اتحفظ ✅");
 }
 function clearAzure(){
   localStorage.removeItem("az_key"); localStorage.removeItem("az_region");
@@ -456,12 +465,68 @@ function speak(text){
 function speakCurrent(){ speak(curLesson.words[curWordIdx].w); }
 function speakSentence(){ speak(SENTENCES[curSentIdx].text); }
 
-/* ================= RECORD (router: Azure if key, else browser) ================= */
+/* ================= FREE SCORER (Hugging Face space) ================= */
+let mediaRec=null, mediaChunks=[], hfRecording=false;
+async function startMicRecord(){
+  const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+  const mime=MediaRecorder.isTypeSupported("audio/webm;codecs=opus")?"audio/webm;codecs=opus":"";
+  mediaRec=new MediaRecorder(stream, mime?{mimeType:mime}:undefined);
+  mediaChunks=[];
+  mediaRec.ondataavailable=e=>{ if(e.data.size) mediaChunks.push(e.data); };
+  mediaRec.start();
+}
+function stopMicRecord(){
+  return new Promise(res=>{
+    mediaRec.onstop=()=>{
+      const blob=new Blob(mediaChunks,{type:mediaRec.mimeType||"audio/webm"});
+      mediaRec.stream.getTracks().forEach(t=>t.stop());
+      const fr=new FileReader();
+      fr.onloadend=()=>res(String(fr.result).split(",")[1]);
+      fr.readAsDataURL(blob);
+    };
+    mediaRec.stop();
+  });
+}
+async function hfPost(path, body){
+  const r=await fetch(hfUrl()+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(!r.ok) throw new Error("server-"+r.status);
+  return r.json();
+}
+async function toggleRecHF(mode){
+  const b=document.getElementById(mode==="drill"?"d-rec":"s-rec");
+  if(hfRecording){
+    hfRecording=false;
+    b.disabled=true; b.textContent="⏳ بيقيّم...";
+    try{
+      const audio=await stopMicRecord();
+      const ref = mode==="drill" ? curLesson.words[curWordIdx].w : SENTENCES[curSentIdx].text;
+      const res=await hfPost("/score",{audio, text:ref});
+      if(res.error) alert("السيرفر: "+res.error);
+      else (mode==="drill"?renderDrillAzure:renderSentAzure)(res);
+    }catch(e){
+      if(SR && confirm("سيرفر التقييم مش بيرد دلوقتي. تحب نكمّل بمحرك المتصفح المجاني؟ (أقل دقة — بيكشف الأخطاء الواضحة بس)")){ toggleRecBrowser(mode); return; }
+      alert("مش قادر أوصل لسيرفر التقييم — غالباً بيصحى من النوم. استنى ٣٠ ثانية وجرّب تاني.");
+    }
+    b.disabled=false; recMode=mode; setRecBtn(false);
+    return;
+  }
+  try{
+    await startMicRecord();
+    recMode=mode; hfRecording=true; setRecBtn(true);
+  }catch(e){ alert("محتاج إذن المايك علشان التقييم الدقيق."); }
+}
+
+/* ================= RECORD (router: Azure if key, else free scorer) ================= */
 function toggleRec(mode){
   if(recActive){ stopRec(); return; }
+  if(hfRecording){ toggleRecHF(mode); return; }
   if(hasAzure()){ toggleRecAzure(mode); return; }
+  toggleRecHF(mode); return;
+}
+/* Browser Web Speech engine — fallback when the scorer server is unreachable */
+function toggleRecBrowser(mode){
   if(!SR){ alert("المتصفح ده مش بيدعم التعرّف على الكلام. جرّب كروم على الموبايل."); return; }
-  recMode=mode; recActive=true;
+  recMode=mode; recActive=true;  // browser-engine fallback (unused unless enabled)
   recog=makeRecBrowser();
   let finalAlts=[];
   recog.onresult=(e)=>{
@@ -632,9 +697,35 @@ function showSentResult(heard){
 }
 
 /* ---- free talk ---- */
+async function startTalkHF(){
+  try{ await startMicRecord(); }
+  catch(e){ alert("محتاج إذن المايك علشان التقييم الدقيق."); return; }
+  recMode="talk"; hfRecording=true; setTalkUI(true);
+}
+async function endTalkHF(){
+  hfRecording=false;
+  document.getElementById("talk-state").textContent="بيحلل...";
+  try{
+    const audio=await stopMicRecord();
+    const res=await hfPost("/assess_free",{audio});
+    setTalkUI(false);
+    document.getElementById("talk-state").textContent="خلصت";
+    if(res.error){ alert("السيرفر: "+res.error); return; }
+    azTalkWords=res.words.map(w=>({word:w.word, score:w.score, phonemes:w.phonemes, error:w.error}));
+    const live=document.getElementById("t-live");
+    live.innerHTML=res.words.map(w=>{const wc=scoreClass(w.score); return '<span class="'+(wc==="good"?"w-ok":(wc==="mid"?"w-low":"w-bad"))+'">'+w.word+"</span> ";}).join(" ");
+    buildReportAzure();
+  }catch(e){
+    setTalkUI(false);
+    document.getElementById("talk-state").textContent="جاهز";
+    alert("مش قادر أوصل لسيرفر التقييم — غالباً بيصحى من النوم. استنى ٣٠ ثانية وجرّب تاني.");
+  }
+}
 function toggleTalk(){
+  if(hfRecording && recMode==="talk"){ endTalkHF(); return; }
   if(recActive && recMode==="talk"){ endTalk(); return; }
   if(hasAzure()){ startTalkAzure(); return; }
+  startTalkHF(); return;
   if(!SR){ alert("المتصفح ده مش بيدعم التعرّف على الكلام. جرّب كروم على الموبايل."); return; }
   recMode="talk"; recActive=true; talkWords=[];
   setTalkUI(true);
@@ -708,6 +799,7 @@ function startTalkAzure(){
   });
 }
 function endTalk(){
+  if(hfRecording && recMode==="talk"){ endTalkHF(); return; }
   if(recMode==="talk" && azRecognizer){
     try{ azRecognizer.stopContinuousRecognitionAsync(()=>{ try{azRecognizer.close();}catch(e){} azRecognizer=null; }); }
     catch(e){ azRecognizer=null; }
@@ -774,6 +866,7 @@ renderSentence();
 refreshAzStatus();
 document.getElementById("az-key").value=azKey();
 document.getElementById("az-region").value=hasAzure()?azRegion():"";
+document.getElementById("hf-url").value=hfUrl();
 speechSynthesis.getVoices(); // warm up
 if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
 </script>
